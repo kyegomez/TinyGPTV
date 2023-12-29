@@ -3,6 +3,11 @@
 # TinyGPTV
 Simple Implementation of TinyGPTV in super simple Zeta lego blocks. Here all the modules from figure 2 are implemented in Zeta and Pytorch
 
+
+## Install
+`pip3 install tiny-gptv`
+
+
 ## Usage
 ```python
 import torch
