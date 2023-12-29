@@ -60,7 +60,3 @@ class TinyGPTVBlock(nn.Module):
         return rms_normed + mlped_x
         
     
-x = torch.rand(2, 8, 512)
-lora_mha = TinyGPTVBlock(512, 8)
-out = lora_mha(x)
-print(out.shape)
