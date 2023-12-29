@@ -1,9 +1,46 @@
 from typing import Optional
 
 import torch
-from torch import nn
+from torch import nn, Tensor
 from zeta.nn import MLP, Lora, MultiQueryAttention
-from zeta.utils import enforce_types
+from zeta import enforce_types
+from typing import List
+
+
+class SkipThenAdd(nn.Module):
+    def __init__(
+        self,
+        modules: List[nn.Module] = None,
+        *args,
+        **kwargs
+    ):
+        """
+        Initializes a SkipThenAdd module.
+
+        Args:
+            modules (List[nn.Module], optional): List of modules to be applied to the input. Defaults to None.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        super().__init__()
+        self.modules = modules
+        
+    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+        """
+        Forward pass of the SkipThenAdd module.
+
+        Args:
+            x (Tensor): Input tensor.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Tensor: Output tensor.
+        """
+        for module in self.modules:
+            module = module(x, *args, **kwargs)
+            out = module + x
+        return out
 
 
 class RMSNorm(nn.Module):

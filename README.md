@@ -24,11 +24,11 @@ x -> skip connection -> layer norm -> lora -> mha + lora -> residual_rms_norm ->
 
 ```python
 import torch
-from tiny_gptv import TinyGPTVBlock
+from tiny_gptv.blocks import TinyGPTVBlock
 
 x = torch.rand(2, 8, 512)
-lora_mha = TinyGPTVBlock(512, 8)
-out = lora_mha(x)
+block = TinyGPTVBlock(512, 8)
+out = block(x)
 print(out.shape)
 
 ```
@@ -46,8 +46,8 @@ import torch
 from tiny_gptv import LoraMHA
 
 x = torch.rand(2, 8, 512)
-lora_mha = LoraMHA(512, 8)
-out = lora_mha(x)
+block = LoraMHA(512, 8)
+out = block(x)
 print(out.shape)
 
 ```
