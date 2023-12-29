@@ -1,3 +1,3 @@
-from tiny_gptv.blocks import TinyGPTVBlock
+from tiny_gptv.blocks import LoraMHA, TinyGPTVBlock
 
-__all__ = ["TinyGPTVBlock"]
+__all__ = ["LoraMHA", "TinyGPTVBlock"]
