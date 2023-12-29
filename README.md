@@ -1,7 +1,10 @@
 [![Multi-Modality](agorabanner.png)](https://discord.gg/qUtxnK2NMf)
 
 # TinyGPTV
-Simple Implementation of TinyGPTV in super simple Zeta lego blocks. Here all the modules from figure 2 are implemented in Zeta and Pytorch
+Simple Implementation of TinyGPTV in super simple Zeta lego blocks. Here all the modules from figure 2 are implemented in Zeta and Pytorch.
+
+The flow is the following:
+x -> skip connection -> layer norm -> lora -> mha + lora -> residual_rms_norm -> original_skip_connection -> mlp + rms norm
 
 
 ## Install
@@ -9,12 +12,41 @@ Simple Implementation of TinyGPTV in super simple Zeta lego blocks. Here all the
 
 
 ## Usage
+
+### TinyGPTVBlock, Figure3 (c):
+- Layernorm
+- MHA
+- Lora
+- QK Norm
+- RMS Norm
+- MLP
+
+
 ```python
 import torch
 from tiny_gptv import TinyGPTVBlock
 
 x = torch.rand(2, 8, 512)
 lora_mha = TinyGPTVBlock(512, 8)
+out = lora_mha(x)
+print(out.shape)
+
+```
+
+### Figure3 (b) Lora Module for LLMS Block
+- MHA,
+- Lora,
+- Normalization,
+- MLP
+- Skip connection
+- Split then add
+
+```python
+import torch
+from tiny_gptv import LoraMHA
+
+x = torch.rand(2, 8, 512)
+lora_mha = LoraMHA(512, 8)
 out = lora_mha(x)
 print(out.shape)
 
