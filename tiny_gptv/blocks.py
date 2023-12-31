@@ -86,12 +86,6 @@ class LoraMHA(nn.Module):
         self.masked_seqlen = masked_seqlen
         self.dropout = dropout
         self.scale = dim**-0.5
-        self.mha = MultiQueryAttention(dim, heads)
-        self.mlp = MLP(
-            dim_in=dim, dim_out=dim, expansion_factor=expansion_factor
-        )
-        self.norm = nn.LayerNorm(dim)
-        self.lora = Lora(dim, dim, alpha=2)
 
         # Layers
         self.mha_layers = nn.ModuleList(
@@ -180,13 +174,13 @@ class TinyGPTVBlock(nn.Module):
             [nn.LayerNorm(dim) for _ in range(depth)]
         )
         self.lora_layers = nn.ModuleList(
-            [Lora(dim, dim, alpha=2) for _ in depth]
+            [Lora(dim, dim, alpha=2) for _ in range(depth)]
         )
         self.mha_layers = nn.ModuleList(
-            [MultiQueryAttention(dim, heads) for _ in depth]
+            [MultiQueryAttention(dim, heads) for _ in range(depth)]
         )
         self.rmsnorm_layers = nn.ModuleList(
-            [RMSNorm(dim) for _ in depth]
+            [RMSNorm(dim) for _ in range(depth)]
         )
         self.mlp_layers = nn.ModuleList(
             [
@@ -195,6 +189,7 @@ class TinyGPTVBlock(nn.Module):
                     dim_out=dim,
                     expansion_factor=expansion_factor,
                 )
+                for _ in range(depth)
             ]
         )
 
@@ -224,3 +219,4 @@ class TinyGPTVBlock(nn.Module):
             mlped_x = mlp(x)
             x = rmsnormed + mlped_x
         return x
+
