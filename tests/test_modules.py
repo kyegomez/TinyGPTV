@@ -1,7 +1,7 @@
 import torch
 import pytest
 from tiny_gptv.blocks import (
-    LoraMHABlock,
+    LoraMHA,
     MultiQueryAttention,
     MLP,
     Lora,
@@ -31,7 +31,7 @@ def test_lora():
 
 
 def test_lora_mha_block():
-    lora_mha = LoraMHABlock(dim=512, heads=8)
+    lora_mha = LoraMHA(dim=512, heads=8)
     x = torch.randn(1, 10, 512)
     output = lora_mha(x)
     assert output.shape == x.shape
@@ -39,7 +39,7 @@ def test_lora_mha_block():
 
 @pytest.mark.parametrize("dim, heads", [(512, 8), (1024, 16)])
 def test_lora_mha_block_shapes(dim, heads):
-    lora_mha = LoraMHABlock(dim=dim, heads=heads)
+    lora_mha = LoraMHA(dim=dim, heads=heads)
     x = torch.randn(1, 10, dim)
     output = lora_mha(x)
     assert output.shape == x.shape
@@ -47,7 +47,7 @@ def test_lora_mha_block_shapes(dim, heads):
 
 def test_lora_mha_block_raises():
     with pytest.raises(ValueError):
-        LoraMHABlock(dim=512, heads=10)
+        LoraMHA(dim=512, heads=10)
 
 
 def test_tiny_gptv_block():

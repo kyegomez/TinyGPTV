@@ -9,10 +9,7 @@ from typing import List
 
 class SkipThenAdd(nn.Module):
     def __init__(
-        self,
-        modules: List[nn.Module] = None,
-        *args,
-        **kwargs
+        self, modules: List[nn.Module] = None, *args, **kwargs
     ):
         """
         Initializes a SkipThenAdd module.
@@ -24,7 +21,7 @@ class SkipThenAdd(nn.Module):
         """
         super().__init__()
         self.modules = modules
-        
+
     def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
         """
         Forward pass of the SkipThenAdd module.
@@ -55,7 +52,7 @@ class RMSNorm(nn.Module):
         return x / norm.clamp(min=self.eps) * self.g
 
 
-class LoraMHABlock(nn.Module):
+class LoraMHA(nn.Module):
     """
     LoraMHA is a module that combines Lora and MultiQueryAttention layers.
 
@@ -74,6 +71,7 @@ class LoraMHABlock(nn.Module):
         self,
         dim: int,
         heads: int,
+        depth: int = 5,
         dropout: float = 0.1,
         causal: bool = False,
         masked: bool = False,
@@ -95,6 +93,27 @@ class LoraMHABlock(nn.Module):
         self.norm = nn.LayerNorm(dim)
         self.lora = Lora(dim, dim, alpha=2)
 
+        # Layers
+        self.mha_layers = nn.ModuleList(
+            [MultiQueryAttention(dim, heads) for _ in range(depth)]
+        )
+        self.mlp_layers = nn.ModuleList(
+            [
+                MLP(
+                    dim_in=dim,
+                    dim_out=dim,
+                    expansion_factor=expansion_factor,
+                )
+                for _ in range(depth)
+            ]
+        )
+        self.norm_layers = nn.ModuleList(
+            [nn.LayerNorm(dim) for _ in range(depth)]
+        )
+        self.lora_layers = nn.ModuleList(
+            [Lora(dim, dim, alpha=2) for _ in range(depth)]
+        )
+
     @enforce_types
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -106,12 +125,18 @@ class LoraMHABlock(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        to_mha, _, _ = self.mha(x)
-        to_lora = self.lora(x)
-        add_together = to_mha + to_lora + x
-        normed = self.norm(add_together)
-        mlped = self.mlp(normed)
-        return mlped + add_together
+        for mha, mlp, norm, lora in zip(
+            self.mha_layers,
+            self.mlp_layers,
+            self.norm_layers,
+            self.lora_layers,
+        ):
+            to_mha, _, _ = mha(x)
+            to_lora = lora(x)
+            add_together = to_mha + to_lora + x
+            normed = norm(add_together)
+            mlped = mlp(normed)
+            return mlped + add_together
 
 
 class TinyGPTVBlock(nn.Module):
@@ -133,6 +158,7 @@ class TinyGPTVBlock(nn.Module):
         self,
         dim: int,
         heads: int,
+        depth: int = None,
         dropout: float = 0.1,
         causal: bool = False,
         masked: bool = False,
@@ -142,20 +168,37 @@ class TinyGPTVBlock(nn.Module):
         super().__init__()
         self.dim = dim
         self.heads = heads
+        self.depth = depth
         self.causal = causal
         self.masked = masked
         self.masked_seqlen = masked_seqlen
         self.dropout = dropout
         self.scale = dim**-0.5
-        self.mha = MultiQueryAttention(dim, heads)
-        self.mlp = MLP(
-            dim_in=dim, dim_out=dim, expansion_factor=expansion_factor
-        )
-        self.norm = nn.LayerNorm(dim)
-        self.lora = Lora(dim, dim, alpha=2)
-        self.rmsnorm = RMSNorm(dim)
 
-    @enforce_types
+        # Layers
+        self.norm_layers = nn.ModuleList(
+            [nn.LayerNorm(dim) for _ in range(depth)]
+        )
+        self.lora_layers = nn.ModuleList(
+            [Lora(dim, dim, alpha=2) for _ in depth]
+        )
+        self.mha_layers = nn.ModuleList(
+            [MultiQueryAttention(dim, heads) for _ in depth]
+        )
+        self.rmsnorm_layers = nn.ModuleList(
+            [RMSNorm(dim) for _ in depth]
+        )
+        self.mlp_layers = nn.ModuleList(
+            [
+                MLP(
+                    dim_in=dim,
+                    dim_out=dim,
+                    expansion_factor=expansion_factor,
+                )
+            ]
+        )
+
+    # Forward method
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the TinyGPTVBlock.
@@ -166,10 +209,18 @@ class TinyGPTVBlock(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        normed_x = self.norm(x)
-        lorad = self.lora(normed_x)
-        attn, _, _ = self.mha(normed_x)
-        attn_with_lora = attn + lorad
-        rms_normed = self.rmsnorm(attn_with_lora)
-        mlped_x = self.mlp(x)
-        return rms_normed + mlped_x
+        for norm, lora, mha, rmsnorm, mlp in zip(
+            self.norm_layers,
+            self.lora_layers,
+            self.mha_layers,
+            self.rmsnorm_layers,
+            self.mlp_layers,
+        ):
+            normed_x = norm(x)
+            lorad = lora(normed_x)
+            attn, _, _ = mha(normed_x)
+            attn_with_lora = attn + lorad
+            rmsnormed = rmsnorm(attn_with_lora)
+            mlped_x = mlp(x)
+            x = rmsnormed + mlped_x
+        return x
